@@ -1,0 +1,937 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2907
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="it">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>Vaultly - Gestione Risparmi e Patrimonio</title>\
+    <!-- Tailwind CSS -->\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <!-- Font Inter -->\
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">\
+    <!-- Lucide Icons -->\
+    <script src="https://unpkg.com/lucide@latest"></script>\
+    <!-- Chart.js per i grafici -->\
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>\
+    <style>\
+        body \{\
+            font-family: 'Inter', sans-serif;\
+            background-color: #f8fafc;\
+            color: #0f172a;\
+        \}\
+        /* Animazioni fluide */\
+        .fade-in \{\
+            animation: fadeIn 0.3s ease-in-out;\
+        \}\
+        @keyframes fadeIn \{\
+            from \{ opacity: 0; transform: translateY(8px); \}\
+            to \{ opacity: 1; transform: translateY(0); \}\
+        \}\
+        /* Nascondi scrollbar per le liste orizzontali */\
+        .no-scrollbar::-webkit-scrollbar \{\
+            display: none;\
+        \}\
+        .no-scrollbar \{\
+            -ms-overflow-style: none;\
+            scrollbar-width: none;\
+        \}\
+    </style>\
+</head>\
+<body class="antialiased min-h-screen flex flex-col">\
+\
+    <!-- Notifica Toast (Sostituisce alert()) -->\
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>\
+\
+    <!-- Header -->\
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">\
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">\
+            <div class="flex items-center gap-2.5">\
+                <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm">\
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>\
+                </div>\
+                <span class="font-bold text-lg tracking-tight text-slate-900">Vaultly<span class="text-emerald-600">.</span></span>\
+            </div>\
+            <div class="flex items-center gap-2">\
+                <button onclick="openCategoryModal()" class="text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition flex items-center gap-1.5">\
+                    <i data-lucide="tags" class="w-4 h-4"></i>\
+                    <span class="hidden sm:inline">Categorie</span>\
+                </button>\
+                <button onclick="openResetModal()" class="text-xs sm:text-sm font-medium text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl transition flex items-center gap-1.5" title="Azzera dati">\
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>\
+                </button>\
+            </div>\
+        </div>\
+    </header>\
+\
+    <!-- Main Content -->\
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">\
+\
+        <!-- Sezione KPI: Patrimonio Netto, Saldo Disponibile, Risparmi Intoccabili -->\
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">\
+            \
+            <!-- Card 1: Patrimonio Netto -->\
+            <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between">\
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/5 rounded-full pointer-events-none"></div>\
+                <div>\
+                    <div class="flex items-center justify-between text-slate-400 text-sm font-medium mb-1">\
+                        <span>Patrimonio Netto Totale</span>\
+                        <i data-lucide="landmark" class="w-4 h-4 text-emerald-400"></i>\
+                    </div>\
+                    <div id="net-worth-display" class="text-3xl sm:text-4xl font-bold tracking-tight mt-2">\
+                        \'80 0,00\
+                    </div>\
+                </div>\
+                <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">\
+                    <span>Disponibile + Risparmi</span>\
+                    <span id="net-worth-trend" class="text-emerald-400 font-medium flex items-center gap-1">\
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Attivo\
+                    </span>\
+                </div>\
+            </div>\
+\
+            <!-- Card 2: Saldo Disponibile (Spese & Guadagni correnti) -->\
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">\
+                <div>\
+                    <div class="flex items-center justify-between text-slate-500 text-sm font-medium mb-1">\
+                        <span>Saldo Disponibile</span>\
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">\
+                            <i data-lucide="wallet" class="w-4 h-4"></i>\
+                        </div>\
+                    </div>\
+                    <div id="available-balance-display" class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">\
+                        \'80 0,00\
+                    </div>\
+                </div>\
+                <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">\
+                    <div>\
+                        <span class="text-slate-400 block">Entrate totali</span>\
+                        <span id="total-income-display" class="font-semibold text-emerald-600">+ \'80 0,00</span>\
+                    </div>\
+                    <div>\
+                        <span class="text-slate-400 block">Uscite totali</span>\
+                        <span id="total-expense-display" class="font-semibold text-rose-600">- \'80 0,00</span>\
+                    </div>\
+                </div>\
+            </div>\
+\
+            <!-- Card 3: Risparmi Intoccabili (Solo Aggiunta) -->\
+            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between relative">\
+                <div>\
+                    <div class="flex items-center justify-between text-emerald-800 text-sm font-semibold mb-1">\
+                        <span class="flex items-center gap-1.5">\
+                            <i data-lucide="lock" class="w-4 h-4 text-emerald-600"></i>\
+                            Risparmi Intoccabili\
+                        </span>\
+                        <button onclick="openGoalModal()" class="text-xs text-emerald-700 hover:underline font-medium">\
+                            Obiettivo\
+                        </button>\
+                    </div>\
+                    <div id="locked-savings-display" class="text-2xl sm:text-3xl font-bold text-emerald-950 mt-1">\
+                        \'80 0,00\
+                    </div>\
+                    \
+                    <!-- Barra Progresso Obiettivo -->\
+                    <div class="mt-3">\
+                        <div class="flex justify-between text-xs text-emerald-800 mb-1">\
+                            <span id="goal-label">Obiettivo: \'80 5.000</span>\
+                            <span id="goal-percentage" class="font-semibold">0%</span>\
+                        </div>\
+                        <div class="w-full bg-emerald-200/70 rounded-full h-2 overflow-hidden">\
+                            <div id="goal-progress-bar" class="bg-emerald-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>\
+                        </div>\
+                    </div>\
+                </div>\
+\
+                <button onclick="openSavingsModal()" class="mt-4 w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-medium text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2">\
+                    <i data-lucide="piggy-bank" class="w-4 h-4"></i>\
+                    Aggiungi al Salvadanaio\
+                </button>\
+            </div>\
+\
+        </section>\
+\
+        <!-- Sezione Centrale: Inserimento Transazione + Analisi Categorie -->\
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">\
+            \
+            <!-- Form Nuova Transazione (7 colonne su desktop) -->\
+            <div class="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">\
+                <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">\
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-slate-700"></i>\
+                    Registra Movimento\
+                </h2>\
+\
+                <form id="transaction-form" class="space-y-4">\
+                    <!-- Selettore Tipo: Spesa vs Guadagno -->\
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">\
+                        <button type="button" id="btn-type-expense" onclick="setTransactionType('expense')" class="py-2 text-sm font-semibold rounded-lg bg-white text-rose-600 shadow-sm transition flex items-center justify-center gap-1.5">\
+                            <i data-lucide="arrow-down-right" class="w-4 h-4"></i> Spesa\
+                        </button>\
+                        <button type="button" id="btn-type-income" onclick="setTransactionType('income')" class="py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5">\
+                            <i data-lucide="arrow-up-right" class="w-4 h-4"></i> Guadagno\
+                        </button>\
+                    </div>\
+\
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">\
+                        <!-- Importo -->\
+                        <div>\
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Importo (\'80)</label>\
+                            <div class="relative">\
+                                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">\'80</span>\
+                                <input type="number" id="tx-amount" step="0.01" min="0.01" required placeholder="0.00" \
+                                    class="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">\
+                            </div>\
+                        </div>\
+\
+                        <!-- Categoria -->\
+                        <div>\
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Categoria</label>\
+                            <select id="tx-category" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">\
+                                <!-- Popolato dinamicamente via JS -->\
+                            </select>\
+                        </div>\
+                    </div>\
+\
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">\
+                        <!-- Descrizione -->\
+                        <div>\
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Descrizione (opzionale)</label>\
+                            <input type="text" id="tx-note" placeholder="Es. Caff\'e8 al bar, Spesa settimanale..." \
+                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">\
+                        </div>\
+\
+                        <!-- Data -->\
+                        <div>\
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Data</label>\
+                            <input type="date" id="tx-date" required \
+                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">\
+                        </div>\
+                    </div>\
+\
+                    <button type="submit" id="submit-tx-btn" class="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2">\
+                        <i data-lucide="check" class="w-4 h-4"></i>\
+                        <span>Aggiungi Spesa</span>\
+                    </button>\
+                </form>\
+            </div>\
+\
+            <!-- Grafico Ripartizione Spese (5 colonne su desktop) -->\
+            <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">\
+                <div class="flex items-center justify-between mb-2">\
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">\
+                        <i data-lucide="pie-chart" class="w-5 h-5 text-slate-700"></i>\
+                        Spese per Categoria\
+                    </h2>\
+                    <span class="text-xs font-medium text-slate-400">Totale uscite</span>\
+                </div>\
+                \
+                <div class="relative h-52 w-full flex items-center justify-center my-auto">\
+                    <canvas id="expensesChart"></canvas>\
+                    <div id="empty-chart-msg" class="hidden text-center text-sm text-slate-400">\
+                        Nessuna spesa registrata.<br>Aggiungi una spesa per vedere il grafico.\
+                    </div>\
+                </div>\
+\
+                <div id="top-category-badge" class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">\
+                    <span>Categoria principale:</span>\
+                    <span class="font-semibold text-slate-800">-</span>\
+                </div>\
+            </div>\
+\
+        </section>\
+\
+        <!-- Cronologia Movimenti -->\
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">\
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">\
+                <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">\
+                    <i data-lucide="history" class="w-5 h-5 text-slate-700"></i>\
+                    Cronologia Movimenti\
+                </h2>\
+                \
+                <!-- Filtri rapidi -->\
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">\
+                    <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white transition whitespace-nowrap">Tutti</button>\
+                    <button onclick="setFilter('expense')" id="filter-expense" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">Spese</button>\
+                    <button onclick="setFilter('income')" id="filter-income" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">Guadagni</button>\
+                    <button onclick="setFilter('savings')" id="filter-savings" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition whitespace-nowrap">Versamenti Risparmio</button>\
+                </div>\
+            </div>\
+\
+            <!-- Lista Transazioni -->\
+            <div id="transactions-list" class="divide-y divide-slate-100">\
+                <!-- Popolato dinamicamente via JS -->\
+            </div>\
+        </section>\
+\
+    </main>\
+\
+    <!-- MODALE 1: Aggiungi ai Risparmi Intoccabili -->\
+    <div id="savings-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4">\
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl fade-in">\
+            <div class="flex items-center justify-between mb-4">\
+                <div class="flex items-center gap-2 text-emerald-700">\
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">\
+                        <i data-lucide="lock" class="w-4 h-4"></i>\
+                    </div>\
+                    <h3 class="font-bold text-lg text-slate-900">Deposita nei Risparmi</h3>\
+                </div>\
+                <button onclick="closeModal('savings-modal')" class="text-slate-400 hover:text-slate-600 p-1">\
+                    <i data-lucide="x" class="w-5 h-5"></i>\
+                </button>\
+            </div>\
+\
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex gap-2.5 text-xs text-amber-800">\
+                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>\
+                <p><strong>Attenzione:</strong> I risparmi inseriti qui sono <strong>intoccabili</strong>. Potrai solo aggiungere denaro, mai prelevarlo.</p>\
+            </div>\
+\
+            <form id="savings-form" class="space-y-4">\
+                <div>\
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Importo da bloccare (\'80)</label>\
+                    <input type="number" id="savings-amount" step="0.01" min="0.01" required placeholder="50.00"\
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600">\
+                </div>\
+\
+                <div>\
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Provenienza fondi</label>\
+                    <select id="savings-source" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600">\
+                        <option value="external">Nuovo deposito esterno (aumenta Patrimonio)</option>\
+                        <option value="transfer">Sposta dal Saldo Disponibile</option>\
+                    </select>\
+                </div>\
+\
+                <div>\
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Nota (es. Risparmio mensile)</label>\
+                    <input type="text" id="savings-note" placeholder="Accantonamento extra"\
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">\
+                </div>\
+\
+                <div class="flex gap-2 pt-2">\
+                    <button type="button" onclick="closeModal('savings-modal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition">Annulla</button>\
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-sm transition">Conferma Deposito</button>\
+                </div>\
+            </form>\
+        </div>\
+    </div>\
+\
+    <!-- MODALE 2: Gestione Categorie -->\
+    <div id="category-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4">\
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl fade-in max-h-[85vh] flex flex-col">\
+            <div class="flex items-center justify-between mb-4">\
+                <h3 class="font-bold text-lg text-slate-900">Gestione Categorie</h3>\
+                <button onclick="closeModal('category-modal')" class="text-slate-400 hover:text-slate-600 p-1">\
+                    <i data-lucide="x" class="w-5 h-5"></i>\
+                </button>\
+            </div>\
+\
+            <!-- Form nuova categoria -->\
+            <form id="category-form" class="flex gap-2 mb-4">\
+                <select id="new-cat-type" class="px-2.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">\
+                    <option value="expense">Spesa</option>\
+                    <option value="income">Guadagno</option>\
+                </select>\
+                <input type="text" id="new-cat-name" required placeholder="Nome (es. Palestra)" class="flex-grow px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">\
+                <button type="submit" class="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition">+</button>\
+            </form>\
+\
+            <div class="overflow-y-auto space-y-4 pr-1 flex-grow">\
+                <div>\
+                    <h4 class="text-xs font-bold uppercase text-rose-600 mb-2">Categorie Spese</h4>\
+                    <div id="expense-categories-list" class="flex flex-wrap gap-2"></div>\
+                </div>\
+                <div>\
+                    <h4 class="text-xs font-bold uppercase text-emerald-600 mb-2">Categorie Guadagni</h4>\
+                    <div id="income-categories-list" class="flex flex-wrap gap-2"></div>\
+                </div>\
+            </div>\
+        </div>\
+    </div>\
+\
+    <!-- MODALE 3: Obiettivo Risparmio -->\
+    <div id="goal-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4">\
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl fade-in">\
+            <h3 class="font-bold text-lg text-slate-900 mb-2">Obiettivo Salvadanaio</h3>\
+            <p class="text-xs text-slate-500 mb-4">Imposta la cifra che vuoi raggiungere nei tuoi risparmi intoccabili.</p>\
+            <form id="goal-form" class="space-y-4">\
+                <div>\
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target (\'80)</label>\
+                    <input type="number" id="goal-input" min="1" step="1" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900">\
+                </div>\
+                <div class="flex gap-2">\
+                    <button type="button" onclick="closeModal('goal-modal')" class="flex-1 py-2 bg-slate-100 rounded-xl text-sm font-semibold text-slate-700">Annulla</button>\
+                    <button type="submit" class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold">Salva</button>\
+                </div>\
+            </form>\
+        </div>\
+    </div>\
+\
+    <!-- MODALE 4: Conferma Reset -->\
+    <div id="reset-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4">\
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl fade-in">\
+            <h3 class="font-bold text-lg text-slate-900 mb-2">Azzerare tutti i dati?</h3>\
+            <p class="text-sm text-slate-600 mb-5">Questa azione canceller\'e0 tutte le transazioni e riporter\'e0 i risparmi a zero. Non \'e8 reversibile.</p>\
+            <div class="flex gap-2">\
+                <button onclick="closeModal('reset-modal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-semibold text-slate-700">Annulla</button>\
+                <button onclick="confirmReset()" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold">Azzera Tutto</button>\
+            </div>\
+        </div>\
+    </div>\
+\
+    <script>\
+        // --- STATO DELL'APPLICAZIONE ---\
+        const DEFAULT_CATEGORIES = \{\
+            expense: [\
+                \{ id: 'cibo', name: 'Cibo & Spesa', icon: '\uc0\u55357 \u57042 ', color: '#f43f5e' \},\
+                \{ id: 'bar', name: 'Bar & Ristoranti', icon: '\uc0\u9749 ', color: '#fb923c' \},\
+                \{ id: 'shopping', name: 'Shopping', icon: '\uc0\u55357 \u57037 \u65039 ', color: '#a855f7' \},\
+                \{ id: 'trasporti', name: 'Trasporti & Auto', icon: '\uc0\u9981 ', color: '#3b82f6' \},\
+                \{ id: 'casa', name: 'Casa & Bollette', icon: '\uc0\u55356 \u57312 ', color: '#0ea5e9' \},\
+                \{ id: 'svago', name: 'Svago & Tempo Libero', icon: '\uc0\u55356 \u57260 ', color: '#ec4899' \},\
+                \{ id: 'altro_spesa', name: 'Altro', icon: '\uc0\u55357 \u56550 ', color: '#64748b' \}\
+            ],\
+            income: [\
+                \{ id: 'stipendio', name: 'Stipendio', icon: '\uc0\u55357 \u56508 ', color: '#10b981' \},\
+                \{ id: 'extra', name: 'Entrate Extra / Lavoretti', icon: '\uc0\u55357 \u56504 ', color: '#14b8a6' \},\
+                \{ id: 'regali', name: 'Regali & Bonus', icon: '\uc0\u55356 \u57217 ', color: '#f59e0b' \},\
+                \{ id: 'vendite', name: 'Vendite Usato', icon: '\uc0\u55356 \u57335 \u65039 ', color: '#6366f1' \}\
+            ]\
+        \};\
+\
+        let appState = \{\
+            lockedSavings: 0,\
+            savingsGoal: 5000,\
+            transactions: [],\
+            categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES))\
+        \};\
+\
+        let currentTxType = 'expense';\
+        let currentFilter = 'all';\
+        let expenseChartInstance = null;\
+\
+        // --- INIZIALIZZAZIONE ---\
+        document.addEventListener('DOMContentLoaded', () => \{\
+            loadData();\
+            document.getElementById('tx-date').valueAsDate = new Date();\
+            populateCategorySelect();\
+            renderAll();\
+            lucide.createIcons();\
+        \});\
+\
+        // --- GESTIONE LOCALSTORAGE ---\
+        function saveData() \{\
+            localStorage.setItem('vaultly_finance_data_v1', JSON.stringify(appState));\
+        \}\
+\
+        function loadData() \{\
+            const saved = localStorage.getItem('vaultly_finance_data_v1');\
+            if (saved) \{\
+                try \{\
+                    const parsed = JSON.parse(saved);\
+                    appState = \{ ...appState, ...parsed \};\
+                \} catch (e) \{\
+                    console.error("Errore caricamento dati:", e);\
+                \}\
+            \}\
+        \}\
+\
+        // --- FORMATTAZIONE VALUTA ---\
+        function formatCurrency(amount) \{\
+            return new Intl.NumberFormat('it-IT', \{\
+                style: 'currency',\
+                currency: 'EUR'\
+            \}).format(amount);\
+        \}\
+\
+        // --- NOTIFICHE TOAST ---\
+        function showToast(message, type = 'success') \{\
+            const container = document.getElementById('toast-container');\
+            const toast = document.createElement('div');\
+            const bgColor = type === 'success' ? 'bg-slate-900 text-white' : (type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white');\
+            \
+            toast.className = `$\{bgColor\} px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 fade-in pointer-events-auto`;\
+            toast.innerHTML = `<span>$\{message\}</span>`;\
+            \
+            container.appendChild(toast);\
+            setTimeout(() => \{\
+                toast.style.opacity = '0';\
+                toast.style.transform = 'translateY(-10px)';\
+                toast.style.transition = 'all 0.3s ease';\
+                setTimeout(() => toast.remove(), 300);\
+            \}, 3000);\
+        \}\
+\
+        // --- GESTIONE TIPO TRANSAZIONE (SPESA / GUADAGNO) ---\
+        function setTransactionType(type) \{\
+            currentTxType = type;\
+            const btnExp = document.getElementById('btn-type-expense');\
+            const btnInc = document.getElementById('btn-type-income');\
+            const submitBtn = document.getElementById('submit-tx-btn');\
+\
+            if (type === 'expense') \{\
+                btnExp.className = 'py-2 text-sm font-semibold rounded-lg bg-white text-rose-600 shadow-sm transition flex items-center justify-center gap-1.5';\
+                btnInc.className = 'py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5';\
+                submitBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Aggiungi Spesa</span>`;\
+                submitBtn.className = 'w-full py-3 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2';\
+            \} else \{\
+                btnInc.className = 'py-2 text-sm font-semibold rounded-lg bg-white text-emerald-600 shadow-sm transition flex items-center justify-center gap-1.5';\
+                btnExp.className = 'py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5';\
+                submitBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Aggiungi Guadagno</span>`;\
+                submitBtn.className = 'w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2';\
+            \}\
+            populateCategorySelect();\
+            lucide.createIcons();\
+        \}\
+\
+        function populateCategorySelect() \{\
+            const select = document.getElementById('tx-category');\
+            select.innerHTML = '';\
+            const list = appState.categories[currentTxType] || [];\
+            list.forEach(cat => \{\
+                const opt = document.createElement('option');\
+                opt.value = cat.id;\
+                opt.textContent = `$\{cat.icon\} $\{cat.name\}`;\
+                select.appendChild(opt);\
+            \});\
+        \}\
+\
+        // --- SUBMIT NUOVA TRANSAZIONE ---\
+        document.getElementById('transaction-form').addEventListener('submit', (e) => \{\
+            e.preventDefault();\
+            const amount = parseFloat(document.getElementById('tx-amount').value);\
+            const categoryId = document.getElementById('tx-category').value;\
+            const note = document.getElementById('tx-note').value.trim();\
+            const date = document.getElementById('tx-date').value;\
+\
+            if (isNaN(amount) || amount <= 0) \{\
+                showToast('Inserisci un importo valido', 'error');\
+                return;\
+            \}\
+\
+            const catObj = appState.categories[currentTxType].find(c => c.id === categoryId) || \{ name: 'Altro', icon: '\uc0\u55357 \u56524 ', color: '#64748b' \};\
+\
+            const newTx = \{\
+                id: Date.now().toString(),\
+                type: currentTxType, // 'expense' | 'income'\
+                amount: amount,\
+                categoryId: categoryId,\
+                categoryName: catObj.name,\
+                categoryIcon: catObj.icon,\
+                categoryColor: catObj.color,\
+                note: note || catObj.name,\
+                date: date\
+            \};\
+\
+            appState.transactions.unshift(newTx);\
+            saveData();\
+            renderAll();\
+\
+            // Reset campi form\
+            document.getElementById('tx-amount').value = '';\
+            document.getElementById('tx-note').value = '';\
+            showToast(currentTxType === 'expense' ? 'Spesa registrata!' : 'Guadagno registrato!');\
+        \});\
+\
+        // --- GESTIONE RISPARMI INTOCCABILI (SOLO AGGIUNTA) ---\
+        document.getElementById('savings-form').addEventListener('submit', (e) => \{\
+            e.preventDefault();\
+            const amount = parseFloat(document.getElementById('savings-amount').value);\
+            const source = document.getElementById('savings-source').value;\
+            const note = document.getElementById('savings-note').value.trim();\
+\
+            if (isNaN(amount) || amount <= 0) \{\
+                showToast('Inserisci un importo valido', 'error');\
+                return;\
+            \}\
+\
+            const \{ availableBalance \} = calculateTotals();\
+\
+            if (source === 'transfer' && amount > availableBalance) \{\
+                showToast('Saldo disponibile insufficiente per questo trasferimento', 'error');\
+                return;\
+            \}\
+\
+            // Aumenta i risparmi intoccabili\
+            appState.lockedSavings += amount;\
+\
+            // Se spostato dal saldo disponibile, registra un'uscita tecnica dal saldo corrente\
+            if (source === 'transfer') \{\
+                appState.transactions.unshift(\{\
+                    id: Date.now().toString() + '_tr',\
+                    type: 'transfer_to_savings',\
+                    amount: amount,\
+                    categoryId: 'savings',\
+                    categoryName: 'Trasferimento a Risparmi',\
+                    categoryIcon: '\uc0\u55357 \u56594 ',\
+                    categoryColor: '#059669',\
+                    note: note || 'Accantonamento dal saldo disponibile',\
+                    date: new Date().toISOString().split('T')[0]\
+                \});\
+            \} else \{\
+                // Deposito esterno: aumenta direttamente risparmi e patrimonio netto\
+                appState.transactions.unshift(\{\
+                    id: Date.now().toString() + '_dep',\
+                    type: 'direct_savings',\
+                    amount: amount,\
+                    categoryId: 'savings',\
+                    categoryName: 'Deposito Risparmi',\
+                    categoryIcon: '\uc0\u55356 \u57318 ',\
+                    categoryColor: '#059669',\
+                    note: note || 'Versamento diretto nel salvadanaio',\
+                    date: new Date().toISOString().split('T')[0]\
+                \});\
+            \}\
+\
+            saveData();\
+            renderAll();\
+            closeModal('savings-modal');\
+            document.getElementById('savings-amount').value = '';\
+            document.getElementById('savings-note').value = '';\
+            showToast(`+ $\{formatCurrency(amount)\} bloccati nei risparmi!`, 'emerald');\
+        \});\
+\
+        // --- CALCOLO TOTALI ---\
+        function calculateTotals() \{\
+            let totalIncome = 0;\
+            let totalExpense = 0;\
+            let transferredToSavings = 0;\
+\
+            appState.transactions.forEach(tx => \{\
+                if (tx.type === 'income') \{\
+                    totalIncome += tx.amount;\
+                \} else if (tx.type === 'expense') \{\
+                    totalExpense += tx.amount;\
+                \} else if (tx.type === 'transfer_to_savings') \{\
+                    transferredToSavings += tx.amount;\
+                \}\
+            \});\
+\
+            const availableBalance = totalIncome - totalExpense - transferredToSavings;\
+            const netWorth = availableBalance + appState.lockedSavings;\
+\
+            return \{\
+                totalIncome,\
+                totalExpense,\
+                availableBalance,\
+                lockedSavings: appState.lockedSavings,\
+                netWorth\
+            \};\
+        \}\
+\
+        // --- RENDERING INTERFACCIA ---\
+        function renderAll() \{\
+            const totals = calculateTotals();\
+\
+            // Aggiorna KPI\
+            document.getElementById('net-worth-display').textContent = formatCurrency(totals.netWorth);\
+            document.getElementById('available-balance-display').textContent = formatCurrency(totals.availableBalance);\
+            document.getElementById('total-income-display').textContent = `+ $\{formatCurrency(totals.totalIncome)\}`;\
+            document.getElementById('total-expense-display').textContent = `- $\{formatCurrency(totals.totalExpense)\}`;\
+            document.getElementById('locked-savings-display').textContent = formatCurrency(totals.lockedSavings);\
+\
+            // Colore saldo disponibile se negativo\
+            const availEl = document.getElementById('available-balance-display');\
+            if (totals.availableBalance < 0) \{\
+                availEl.classList.replace('text-slate-900', 'text-rose-600');\
+            \} else \{\
+                availEl.classList.replace('text-rose-600', 'text-slate-900');\
+            \}\
+\
+            // Aggiorna Obiettivo Risparmi\
+            const goal = appState.savingsGoal || 5000;\
+            const pct = Math.min(100, Math.round((totals.lockedSavings / goal) * 100));\
+            document.getElementById('goal-label').textContent = `Obiettivo: $\{formatCurrency(goal)\}`;\
+            document.getElementById('goal-percentage').textContent = `$\{pct\}%`;\
+            document.getElementById('goal-progress-bar').style.width = `$\{pct\}%`;\
+\
+            renderTransactions();\
+            renderChart();\
+            renderCategoryManager();\
+            lucide.createIcons();\
+        \}\
+\
+        function setFilter(filter) \{\
+            currentFilter = filter;\
+            ['all', 'expense', 'income', 'savings'].forEach(f => \{\
+                const btn = document.getElementById(`filter-$\{f\}`);\
+                if (f === filter) \{\
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white transition whitespace-nowrap';\
+                \} else \{\
+                    btn.className = f === 'savings' \
+                        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition whitespace-nowrap'\
+                        : 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap';\
+                \}\
+            \});\
+            renderTransactions();\
+        \}\
+\
+        function renderTransactions() \{\
+            const container = document.getElementById('transactions-list');\
+            container.innerHTML = '';\
+\
+            let filtered = appState.transactions;\
+            if (currentFilter === 'expense') \{\
+                filtered = filtered.filter(t => t.type === 'expense');\
+            \} else if (currentFilter === 'income') \{\
+                filtered = filtered.filter(t => t.type === 'income');\
+            \} else if (currentFilter === 'savings') \{\
+                filtered = filtered.filter(t => t.type === 'transfer_to_savings' || t.type === 'direct_savings');\
+            \}\
+\
+            if (filtered.length === 0) \{\
+                container.innerHTML = `\
+                    <div class="py-10 text-center text-slate-400">\
+                        <p class="text-sm">Nessun movimento trovato in questa sezione.</p>\
+                    </div>\
+                `;\
+                return;\
+            \}\
+\
+            filtered.forEach(tx => \{\
+                const isExpense = tx.type === 'expense';\
+                const isSavings = tx.type === 'transfer_to_savings' || tx.type === 'direct_savings';\
+                \
+                let amountColor = 'text-emerald-600';\
+                let sign = '+';\
+                if (isExpense) \{\
+                    amountColor = 'text-rose-600';\
+                    sign = '-';\
+                \} else if (isSavings) \{\
+                    amountColor = 'text-emerald-700';\
+                    sign = '\uc0\u55357 \u56594  +';\
+                \}\
+\
+                // Formattazione data leggibile\
+                const dateObj = new Date(tx.date);\
+                const formattedDate = isNaN(dateObj) ? tx.date : dateObj.toLocaleDateString('it-IT', \{ day: '2-digit', month: 'short', year: 'numeric' \});\
+\
+                const item = document.createElement('div');\
+                item.className = 'py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 px-2 rounded-xl transition group';\
+                item.innerHTML = `\
+                    <div class="flex items-center gap-3.5 min-w-0">\
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style="background-color: $\{tx.categoryColor\}15;">\
+                            $\{tx.categoryIcon\}\
+                        </div>\
+                        <div class="min-w-0">\
+                            <p class="text-sm font-semibold text-slate-900 truncate">$\{escapeHTML(tx.note)\}</p>\
+                            <div class="flex items-center gap-2 text-xs text-slate-500">\
+                                <span class="font-medium">$\{escapeHTML(tx.categoryName)\}</span>\
+                                <span>\'95</span>\
+                                <span>$\{formattedDate\}</span>\
+                            </div>\
+                        </div>\
+                    </div>\
+                    <div class="flex items-center gap-3 shrink-0">\
+                        <span class="font-bold text-sm sm:text-base $\{amountColor\}">\
+                            $\{sign\}$\{formatCurrency(tx.amount)\}\
+                        </span>\
+                        $\{!isSavings ? `\
+                            <button onclick="deleteTransaction('$\{tx.id\}')" class="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Elimina movimento">\
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>\
+                            </button>\
+                        ` : `\
+                            <span class="p-1.5 text-emerald-600/50" title="Risparmio bloccato non eliminabile">\
+                                <i data-lucide="lock" class="w-4 h-4"></i>\
+                            </span>\
+                        `\}\
+                    </div>\
+                `;\
+                container.appendChild(item);\
+            \});\
+            lucide.createIcons();\
+        \}\
+\
+        function deleteTransaction(id) \{\
+            appState.transactions = appState.transactions.filter(t => t.id !== id);\
+            saveData();\
+            renderAll();\
+            showToast('Movimento eliminato');\
+        \}\
+\
+        // --- GRAFICO SPESE PER CATEGORIA ---\
+        function renderChart() \{\
+            const ctx = document.getElementById('expensesChart').getContext('2d');\
+            const emptyMsg = document.getElementById('empty-chart-msg');\
+            const topBadge = document.getElementById('top-category-badge');\
+\
+            const expenses = appState.transactions.filter(t => t.type === 'expense');\
+\
+            if (expenses.length === 0) \{\
+                if (expenseChartInstance) expenseChartInstance.destroy();\
+                document.getElementById('expensesChart').style.display = 'none';\
+                emptyMsg.classList.remove('hidden');\
+                topBadge.innerHTML = `<span>Categoria principale:</span><span class="font-semibold text-slate-800">-</span>`;\
+                return;\
+            \}\
+\
+            document.getElementById('expensesChart').style.display = 'block';\
+            emptyMsg.classList.add('hidden');\
+\
+            // Aggrega per categoria\
+            const grouped = \{\};\
+            expenses.forEach(tx => \{\
+                if (!grouped[tx.categoryName]) \{\
+                    grouped[tx.categoryName] = \{ total: 0, color: tx.categoryColor, icon: tx.categoryIcon \};\
+                \}\
+                grouped[tx.categoryName].total += tx.amount;\
+            \});\
+\
+            const labels = Object.keys(grouped);\
+            const dataValues = labels.map(l => grouped[l].total);\
+            const colors = labels.map(l => grouped[l].color);\
+\
+            // Trova categoria pi\'f9 costosa\
+            let topCat = labels[0];\
+            labels.forEach(l => \{\
+                if (grouped[l].total > grouped[topCat].total) topCat = l;\
+            \});\
+            topBadge.innerHTML = `\
+                <span>Maggior spesa:</span>\
+                <span class="font-semibold text-slate-900">$\{grouped[topCat].icon\} $\{topCat\} ($\{formatCurrency(grouped[topCat].total)\})</span>\
+            `;\
+\
+            if (expenseChartInstance) \{\
+                expenseChartInstance.destroy();\
+            \}\
+\
+            expenseChartInstance = new Chart(ctx, \{\
+                type: 'doughnut',\
+                data: \{\
+                    labels: labels,\
+                    datasets: [\{\
+                        data: dataValues,\
+                        backgroundColor: colors,\
+                        borderWidth: 2,\
+                        borderColor: '#ffffff',\
+                        hoverOffset: 4\
+                    \}]\
+                \},\
+                options: \{\
+                    responsive: true,\
+                    maintainAspectRatio: false,\
+                    cutout: '68%',\
+                    plugins: \{\
+                        legend: \{\
+                            position: 'right',\
+                            labels: \{\
+                                boxWidth: 10,\
+                                usePointStyle: true,\
+                                font: \{ family: 'Inter', size: 11 \}\
+                            \}\
+                        \},\
+                        tooltip: \{\
+                            callbacks: \{\
+                                label: function(context) \{\
+                                    return ` $\{context.label\}: $\{formatCurrency(context.raw)\}`;\
+                                \}\
+                            \}\
+                        \}\
+                    \}\
+                \}\
+            \});\
+        \}\
+\
+        // --- GESTIONE CATEGORIE PERSONALIZZATE ---\
+        function renderCategoryManager() \{\
+            const expList = document.getElementById('expense-categories-list');\
+            const incList = document.getElementById('income-categories-list');\
+            expList.innerHTML = '';\
+            incList.innerHTML = '';\
+\
+            appState.categories.expense.forEach(cat => \{\
+                expList.innerHTML += `\
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-100 text-slate-800">\
+                        $\{cat.icon\} $\{escapeHTML(cat.name)\}\
+                    </span>\
+                `;\
+            \});\
+\
+            appState.categories.income.forEach(cat => \{\
+                incList.innerHTML += `\
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-900">\
+                        $\{cat.icon\} $\{escapeHTML(cat.name)\}\
+                    </span>\
+                `;\
+            \});\
+        \}\
+\
+        document.getElementById('category-form').addEventListener('submit', (e) => \{\
+            e.preventDefault();\
+            const type = document.getElementById('new-cat-type').value;\
+            const name = document.getElementById('new-cat-name').value.trim();\
+            if (!name) return;\
+\
+            const randomColors = ['#6366f1', '#ec4899', '#f59e0b', '#14b8a6', '#8b5cf6', '#06b6d4'];\
+            const color = randomColors[Math.floor(Math.random() * randomColors.length)];\
+\
+            appState.categories[type].push(\{\
+                id: 'custom_' + Date.now(),\
+                name: name,\
+                icon: type === 'expense' ? '\uc0\u55356 \u57335 \u65039 ' : '\u55357 \u56496 ',\
+                color: color\
+            \});\
+\
+            saveData();\
+            populateCategorySelect();\
+            renderCategoryManager();\
+            document.getElementById('new-cat-name').value = '';\
+            showToast('Categoria aggiunta!');\
+        \});\
+\
+        // --- GESTIONE MODALI ---\
+        function openSavingsModal() \{\
+            document.getElementById('savings-modal').classList.replace('hidden', 'flex');\
+        \}\
+        function openCategoryModal() \{\
+            document.getElementById('category-modal').classList.replace('hidden', 'flex');\
+        \}\
+        function openGoalModal() \{\
+            document.getElementById('goal-input').value = appState.savingsGoal;\
+            document.getElementById('goal-modal').classList.replace('hidden', 'flex');\
+        \}\
+        function openResetModal() \{\
+            document.getElementById('reset-modal').classList.replace('hidden', 'flex');\
+        \}\
+        function closeModal(id) \{\
+            document.getElementById(id).classList.replace('flex', 'hidden');\
+        \}\
+\
+        document.getElementById('goal-form').addEventListener('submit', (e) => \{\
+            e.preventDefault();\
+            const val = parseFloat(document.getElementById('goal-input').value);\
+            if (val > 0) \{\
+                appState.savingsGoal = val;\
+                saveData();\
+                renderAll();\
+                closeModal('goal-modal');\
+                showToast('Obiettivo aggiornato!');\
+            \}\
+        \});\
+\
+        function confirmReset() \{\
+            appState = \{\
+                lockedSavings: 0,\
+                savingsGoal: 5000,\
+                transactions: [],\
+                categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES))\
+            \};\
+            saveData();\
+            populateCategorySelect();\
+            renderAll();\
+            closeModal('reset-modal');\
+            showToast('Tutti i dati sono stati azzerati');\
+        \}\
+\
+        // Utility sicurezza XSS\
+        function escapeHTML(str) \{\
+            return str.replace(/[&<>'"]/g, tag => (\{\
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'\
+            \}[tag]));\
+        \}\
+    </script>\
+</body>\
+</html>}
